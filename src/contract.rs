@@ -1,12 +1,13 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128
+    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr
 };
 use cw20_base::state::{TOKEN_INFO, BALANCES};
 use cw20_base::contract::instantiate as cw20_instantiate;
 use cw20_base;
+use cw20::Cw20ReceiveMsg;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
 use crate::state::{State, STATE};
 
 // Note, you can use StdResult in some functions where you do not
@@ -45,6 +46,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
+        ExecuteMsg::Receive (msg) => try_receive(deps, info, msg),
     }
 }
 
@@ -63,6 +65,22 @@ pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Respons
             return Err(ContractError::Unauthorized {});
         }
         state.count = count;
+        Ok(state)
+    })?;
+    Ok(Response::default())
+}
+
+pub fn try_receive(deps: DepsMut, info: MessageInfo, wrapper: Cw20ReceiveMsg) -> Result<Response, ContractError> {
+    let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
+    match msg {
+        ReceiveMsg::AddLiquidity {} => try_add_liquidity(deps, info, wrapper.amount)
+    }
+}
+
+pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, token_amount: Uint128) -> Result<Response, ContractError> {
+    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+        state.tokenSupply += token_amount;
+        state.nativeSupply.amount += info.funds[0].amount;
         Ok(state)
     })?;
     Ok(Response::default())
@@ -90,7 +108,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg { count: 17, nativeDenom: "test".to_string(), tokenAddress: Addr::unchecked("asdf")};
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -107,7 +125,7 @@ mod tests {
     fn increment() {
         let mut deps = mock_dependencies(&coins(2, "token"));
 
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg { count: 17, nativeDenom: "test".to_string(), tokenAddress: Addr::unchecked("asdf")};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -126,7 +144,7 @@ mod tests {
     fn reset() {
         let mut deps = mock_dependencies(&coins(2, "token"));
 
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg { count: 17, nativeDenom: "test".to_string(), tokenAddress: Addr::unchecked("asdf")};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
