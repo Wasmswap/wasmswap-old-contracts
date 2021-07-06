@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg
+    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg, StdError
 };
 use cw20_base::state::{TOKEN_INFO, BALANCES};
 use cw20_base::contract::{instantiate as cw20_instantiate, execute_mint,query_balance};
@@ -50,12 +50,35 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
 
     let token = TOKEN_INFO.load(deps.storage)?;
 
-    let mut mint_amount = Uint128(0);
-    let mut token_amount = Uint128(0);
-    if token.total_supply == Uint128(0) {
-        mint_amount = info.funds[0].clone().amount;
-        token_amount = max_token
-    } 
+    let mint_amount = if token.total_supply == Uint128(0) {
+        info.funds[0].clone().amount
+    } else {
+        info.funds[0].clone().amount
+            .checked_mul(token.total_supply)
+            .map_err(StdError::overflow)?
+            .checked_div(state.nativeSupply.amount)
+            .map_err(StdError::divide_by_zero)?
+    };
+
+    let token_amount= if token.total_supply == Uint128(0) {
+        max_token
+    } else {
+        info.funds[0].clone().amount
+            .checked_mul(state.tokenSupply)
+            .map_err(StdError::overflow)?
+            .checked_div(state.nativeSupply.amount)
+            .map_err(StdError::divide_by_zero)?
+            .checked_add(Uint128(1))
+            .map_err(StdError::overflow)?
+    };
+
+    if mint_amount < min_liqudity {
+        return Err(ContractError::MinLiquidityError{min_liquidity: min_liqudity, liquidity_available: mint_amount});
+    }
+
+    if token_amount > max_token {
+        return Err(ContractError::MaxTokenError{max_token: max_token, tokens_required: token_amount});
+    }
 
     // create transfer cw20 msg
     let transfer_cw20_msg = Cw20ExecuteMsg::TransferFrom {

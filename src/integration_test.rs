@@ -37,7 +37,7 @@ pub fn contract_cw20() -> Box<dyn Contract<Empty>> {
 
 #[test]
 // receive cw20 tokens and release upon approval
-fn sale_happy_path() {
+fn amm_happy_path() {
     let mut router = mock_app();
 
     const NATIVE_TOKEN_DENOM: &str = "token";
@@ -110,4 +110,33 @@ fn sale_happy_path() {
     assert_eq!(amm_balance, Uint128(100));
     let crust_balance = amm.balance(&router, owner.clone()).unwrap();
     assert_eq!(crust_balance, Uint128(100));
+
+    // send tokens to contract address
+    let allowance_msg = Cw20ExecuteMsg::IncreaseAllowance {
+        spender: amm_addr.to_string(),
+        amount: Uint128::from(51u128),
+        expires: None,
+    };
+    let res = router
+        .execute_contract(owner.clone(), cash_addr.clone(), &allowance_msg, &[])
+        .unwrap();
+    println!("{:?}", res.attributes);
+    assert_eq!(4, res.attributes.len());
+
+    let add_liquidity_msg = ExecuteMsg::AddLiquidity {
+        min_liqudity: Uint128(50),
+        max_token: Uint128(51),
+    };
+    let res = router
+    .execute_contract(owner.clone(), amm_addr.clone(), &add_liquidity_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.into(), amount: Uint128(50)}])
+    .unwrap();
+    println!("{:?}", res.attributes);
+
+    // ensure balances updated
+    let owner_balance = cash.balance(&router, owner.clone()).unwrap();
+    assert_eq!(owner_balance, Uint128(4849));
+    let amm_balance = cash.balance(&router, amm_addr.clone()).unwrap();
+    assert_eq!(amm_balance, Uint128(151));
+    let crust_balance = amm.balance(&router, owner.clone()).unwrap();
+    assert_eq!(crust_balance, Uint128(150));
 }
