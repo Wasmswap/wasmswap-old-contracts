@@ -1,6 +1,9 @@
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
+use cw20_base::state::{TOKEN_INFO, BALANCES};
+use cw20_base::contract::instantiate as cw20_instantiate;
+use cw20_base;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -17,11 +20,15 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let state = State {
         count: msg.count,
-        owner: info.sender,
+        owner: info.sender.clone(),
     };
     STATE.save(deps.storage, &state)?;
 
-    Ok(Response::default())
+    let result = cw20_instantiate(deps,_env,info,cw20_base::msg::InstantiateMsg{name:"liquidity".to_string(),symbol:"1234".to_string(),decimals:0,initial_balances:vec![],mint:None});
+    match result {
+        Ok(_) => Ok(Response::default()),
+        Err(e) => return Err(ContractError::Std(e))
+    }
 }
 
 // And declare a custom Error variant for the ones where you will want to make use of it
