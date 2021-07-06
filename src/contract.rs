@@ -2,7 +2,7 @@ use cosmwasm_std::{
     entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg, StdError
 };
 use cw20_base::state::{TOKEN_INFO, BALANCES};
-use cw20_base::contract::{instantiate as cw20_instantiate, execute_mint,query_balance};
+use cw20_base::contract::{instantiate as cw20_instantiate, execute_mint,query_balance, execute_burn};
 use cw20_base;
 use cw20::{Cw20ExecuteMsg, MinterResponse};
 
@@ -41,6 +41,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AddLiquidity {min_liqudity, max_token} => try_add_liquidity(deps, info, _env, min_liqudity, max_token),
+        ExecuteMsg::RemoveLiquidity {amount, min_native, min_token} => try_remove_liquidity(deps, info, _env, amount, min_native, min_token),
     }
 }
 
@@ -108,6 +109,62 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
 
     Ok(Response {
         messages: vec![cw20_transfer_cosmos_msg],
+        submessages: vec![],
+        attributes: vec![],
+        data: None,
+    })
+}
+
+pub fn try_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount: Uint128, min_native: Uint128, min_token: Uint128) -> Result<Response, ContractError> {
+    let balance = BALANCES.load(deps.storage, &info.sender)?;
+    let token = TOKEN_INFO.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
+
+    if amount > balance {
+        return Err(ContractError::InsufficientLiquidityError{requested: amount, available: balance});
+    }
+
+    let native_amount = amount.checked_mul(state.nativeSupply.amount).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
+    if native_amount < min_native {
+        return Err(ContractError::MinNative{requested: min_native, available: native_amount})
+    }
+
+    let token_amount = amount.checked_mul(state.tokenSupply).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
+    if token_amount < min_token {
+        return Err(ContractError::MinNative{requested: min_token, available: token_amount})
+    }
+
+    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+        state.tokenSupply = state.tokenSupply.checked_sub(token_amount).map_err(StdError::overflow)?;
+        state.nativeSupply.amount = state.nativeSupply.amount.checked_sub(native_amount).map_err(StdError::overflow)?; 
+        Ok(state)
+    })?;
+
+
+    let transfer_bank_msg = cosmwasm_std::BankMsg::Send {
+        to_address: info.sender.clone().into(),
+        amount: vec!(Coin{denom:state.nativeSupply.denom,amount:native_amount}),
+    };
+
+    let transfer_bank_cosmos_msg: CosmosMsg = transfer_bank_msg.into();
+
+      // create transfer cw20 msg
+    let transfer_cw20_msg = Cw20ExecuteMsg::Transfer {
+        recipient: info.sender.clone().into(),
+        amount: token_amount,
+    };
+    let exec_cw20_transfer = WasmMsg::Execute {
+        contract_addr: state.tokenAddress.into(),
+        msg: to_binary(&transfer_cw20_msg)?,
+        send: vec![],
+    };
+    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
+
+    execute_burn(deps, _env, info, amount)?;
+
+
+    Ok(Response {
+        messages: vec![transfer_bank_cosmos_msg, cw20_transfer_cosmos_msg],
         submessages: vec![],
         attributes: vec![],
         data: None,

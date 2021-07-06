@@ -20,4 +20,13 @@ pub enum ContractError {
 
     #[error("MaxTokenError")]
     MaxTokenError { max_token: Uint128, tokens_required: Uint128},
+
+    #[error("InsufficientLiquidityError")]
+    InsufficientLiquidityError {requested: Uint128, available: Uint128},
+
+    #[error("MinNativeError")]
+    MinNative {requested: Uint128, available: Uint128},
+
+    #[error("MinTokenError")]
+    MinToken {requested: Uint128, available: Uint128},
 }

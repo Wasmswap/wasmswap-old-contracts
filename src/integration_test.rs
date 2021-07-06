@@ -139,4 +139,22 @@ fn amm_happy_path() {
     assert_eq!(amm_balance, Uint128(151));
     let crust_balance = amm.balance(&router, owner.clone()).unwrap();
     assert_eq!(crust_balance, Uint128(150));
+
+    let remove_liquidity_msg = ExecuteMsg::RemoveLiquidity {
+        amount: Uint128(50),
+        min_native: Uint128(50),
+        min_token: Uint128(50),
+    };
+    let res = router
+    .execute_contract(owner.clone(), amm_addr.clone(), &remove_liquidity_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.into(), amount: Uint128(50)}])
+    .unwrap();
+    println!("{:?}", res.attributes);
+
+    // ensure balances updated
+    let owner_balance = cash.balance(&router, owner.clone()).unwrap();
+    assert_eq!(owner_balance, Uint128(4899));
+    let amm_balance = cash.balance(&router, amm_addr.clone()).unwrap();
+    assert_eq!(amm_balance, Uint128(101));
+    let crust_balance = amm.balance(&router, owner.clone()).unwrap();
+    assert_eq!(crust_balance, Uint128(100));
 }
