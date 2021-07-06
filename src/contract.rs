@@ -28,7 +28,7 @@ pub fn instantiate(
     };
     STATE.save(deps.storage, &state)?;
 
-    let result = cw20_instantiate(deps,_env,info,cw20_base::msg::InstantiateMsg{name:"liquidity".to_string(),symbol:"1234".to_string(),decimals:0,initial_balances:vec![],mint:None});
+    let result = cw20_instantiate(deps,_env,info,cw20_base::msg::InstantiateMsg{name:"liquidity".to_string(),symbol:"AAAA".to_string(),decimals:0,initial_balances:vec![],mint:None});
     match result {
         Ok(_) => Ok(Response::default()),
         Err(e) => return Err(ContractError::Std(e))
