@@ -95,7 +95,8 @@ fn sale_happy_path() {
     assert_eq!(4, res.attributes.len());
 
     let add_liquidity_msg = ExecuteMsg::AddLiquidity {
-        tokenAmount: Uint128(100)
+        min_liqudity: Uint128(100),
+        max_token: Uint128(100),
     };
     let res = router
     .execute_contract(owner.clone(), amm_addr.clone(), &add_liquidity_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.into(), amount: Uint128(100)}])
