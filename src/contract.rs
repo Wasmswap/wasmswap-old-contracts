@@ -7,7 +7,7 @@ use cw20_base;
 use cw20::{Cw20ExecuteMsg, MinterResponse};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, CountResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, STATE};
 
 // Note, you can use StdResult in some functions where you do not
@@ -117,14 +117,8 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
         QueryMsg::Balance {address} => to_binary(&query_balance(deps, address)?)
     }
-}
-
-fn query_count(deps: Deps) -> StdResult<CountResponse> {
-    let state = STATE.load(deps.storage)?;
-    Ok(CountResponse { count: 1})
 }
 
 #[cfg(test)]
