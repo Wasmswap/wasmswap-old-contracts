@@ -43,6 +43,8 @@ fn sale_happy_path() {
     const NATIVE_TOKEN_DENOM: &str = "token";
 
     let owner = Addr::unchecked("owner");
+    let funds = coins(2000, NATIVE_TOKEN_DENOM);
+    router.set_bank_balance(&owner, funds).unwrap();
 
     // set up cw20 contract with some tokens
     let cw20_id = router.store_code(contract_cw20());
@@ -87,7 +89,7 @@ fn sale_happy_path() {
         msg: Some(to_binary(&ReceiveMsg::AddLiquidity {}).unwrap()),
     };
     let res = router
-        .execute_contract(owner.clone(), cash_addr.clone(), &send_msg, &[])
+        .execute_contract(owner.clone(), cash_addr.clone(), &send_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.to_string(), amount: Uint128(100)}])
         .unwrap();
     println!("{:?}", res.attributes);
     assert_eq!(4, res.attributes.len());
