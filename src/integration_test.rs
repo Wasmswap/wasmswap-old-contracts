@@ -7,7 +7,7 @@ use cosmwasm_std::{
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use cw_multi_test::{App, Contract, ContractWrapper, SimpleBank};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn mock_app() -> App {
     let env = mock_env();
@@ -76,6 +76,7 @@ fn sale_happy_path() {
 
     // set up cw20 helpers
     let cash = Cw20Contract(cash_addr.clone());
+    let amm = Cw20Contract(amm_addr.clone());
 
     // check initial balances
     let owner_balance = cash.balance(&router, owner.clone()).unwrap();
@@ -106,4 +107,6 @@ fn sale_happy_path() {
     assert_eq!(owner_balance, Uint128(4900));
     let amm_balance = cash.balance(&router, amm_addr.clone()).unwrap();
     assert_eq!(amm_balance, Uint128(100));
+    let crust_balance = amm.balance(&router, owner.clone()).unwrap();
+    assert_eq!(crust_balance, Uint128(100));
 }

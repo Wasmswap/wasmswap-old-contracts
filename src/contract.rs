@@ -2,9 +2,9 @@ use cosmwasm_std::{
     entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg
 };
 use cw20_base::state::{TOKEN_INFO, BALANCES};
-use cw20_base::contract::instantiate as cw20_instantiate;
+use cw20_base::contract::{instantiate as cw20_instantiate, execute_mint,query_balance};
 use cw20_base;
-use cw20::Cw20ExecuteMsg;
+use cw20::{Cw20ExecuteMsg, MinterResponse};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, CountResponse};
@@ -26,11 +26,9 @@ pub fn instantiate(
     };
     STATE.save(deps.storage, &state)?;
 
-    let result = cw20_instantiate(deps,_env,info,cw20_base::msg::InstantiateMsg{name:"liquidity".to_string(),symbol:"AAAA".to_string(),decimals:0,initial_balances:vec![],mint:None});
-    match result {
-        Ok(_) => Ok(Response::default()),
-        Err(e) => return Err(ContractError::Std(e))
-    }
+    cw20_instantiate(deps,_env.clone(),info,cw20_base::msg::InstantiateMsg{name:"liquidity".into(),symbol:"AAAA".into(),decimals:0,initial_balances:vec![],mint:Some(MinterResponse{minter:_env.contract.address.clone().into(), cap: None})})?;
+
+    Ok(Response::default())
 }
 
 // And declare a custom Error variant for the ones where you will want to make use of it
@@ -53,7 +51,7 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, token_amou
      // create transfer cw20 msg
      let transfer_cw20_msg = Cw20ExecuteMsg::TransferFrom {
         owner: info.sender.clone().into(),
-        recipient: _env.contract.address.into(),
+        recipient: _env.contract.address.clone().into(),
         amount: token_amount,
     };
     let exec_cw20_transfer = WasmMsg::Execute {
@@ -65,9 +63,21 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, token_amou
 
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
         state.tokenSupply += token_amount;
-        state.nativeSupply.amount += info.funds[0].amount;
+        state.nativeSupply.amount += info.funds[0].amount.clone();
         Ok(state)
     })?;
+
+    let token = TOKEN_INFO.load(deps.storage)?;
+
+
+    if token.total_supply == Uint128(0) {
+        let mint_amount = info.funds[0].clone().amount;
+        let sub_info = MessageInfo {
+            sender: _env.contract.address.clone(),
+            funds: vec![],
+        };
+        execute_mint(deps, _env, sub_info, info.sender.clone().into(), mint_amount)?;
+    }
 
     Ok(Response {
         messages: vec![cw20_transfer_cosmos_msg],
@@ -81,6 +91,7 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, token_amou
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::Balance {address} => to_binary(&query_balance(deps, address)?)
     }
 }
 

@@ -21,6 +21,9 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     // GetCount returns the current count as a json-encoded number
     GetCount {},
+
+    /// Implements CW20. Returns the current balance of the given address, 0 if unset.
+    Balance { address: String },
 }
 
 // We define a custom struct for each query response
