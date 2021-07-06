@@ -2,12 +2,12 @@
 
 use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
 use cosmwasm_std::{
-    coins, from_binary, to_binary, Addr, BalanceResponse, BankQuery, Coin, Empty, Uint128,
+    coins, from_binary, to_binary, Addr, BalanceResponse, BankQuery, Coin, Empty, Uint128, CosmosMsg, WasmMsg
 };
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use cw_multi_test::{App, Contract, ContractWrapper, SimpleBank};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, ReceiveMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg};
 
 fn mock_app() -> App {
     let env = mock_env();
@@ -69,11 +69,11 @@ fn sale_happy_path() {
         nativeDenom: NATIVE_TOKEN_DENOM.to_string(),
         tokenAddress: cash_addr.clone(),
     };
-    let sale_addr = router
+    let amm_addr = router
         .instantiate_contract(amm_id, owner.clone(), &msg, &[], "amm")
         .unwrap();
 
-    assert_ne!(cash_addr, sale_addr);
+    assert_ne!(cash_addr, amm_addr);
 
     // set up cw20 helpers
     let cash = Cw20Contract(cash_addr.clone());
@@ -83,20 +83,28 @@ fn sale_happy_path() {
     assert_eq!(owner_balance, Uint128(5000));
 
     // send tokens to contract address
-    let send_msg = Cw20ExecuteMsg::Send {
-        contract: sale_addr.to_string(),
+    let allowance_msg = Cw20ExecuteMsg::IncreaseAllowance {
+        spender: amm_addr.to_string(),
         amount: Uint128::from(100u128),
-        msg: Some(to_binary(&ReceiveMsg::AddLiquidity {}).unwrap()),
+        expires: None,
     };
     let res = router
-        .execute_contract(owner.clone(), cash_addr.clone(), &send_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.to_string(), amount: Uint128(100)}])
+        .execute_contract(owner.clone(), cash_addr.clone(), &allowance_msg, &[])
         .unwrap();
     println!("{:?}", res.attributes);
     assert_eq!(4, res.attributes.len());
 
+    let add_liquidity_msg = ExecuteMsg::AddLiquidity {
+        tokenAmount: Uint128(100)
+    };
+    let res = router
+    .execute_contract(owner.clone(), amm_addr.clone(), &add_liquidity_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.into(), amount: Uint128(100)}])
+    .unwrap();
+    println!("{:?}", res.attributes);
+
     // ensure balances updated
     let owner_balance = cash.balance(&router, owner.clone()).unwrap();
     assert_eq!(owner_balance, Uint128(4900));
-    let sale_balance = cash.balance(&router, sale_addr.clone()).unwrap();
-    assert_eq!(sale_balance, Uint128(100));
+    let amm_balance = cash.balance(&router, amm_addr.clone()).unwrap();
+    assert_eq!(amm_balance, Uint128(100));
 }

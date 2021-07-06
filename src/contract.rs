@@ -1,13 +1,13 @@
 use cosmwasm_std::{
-    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr
+    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg
 };
 use cw20_base::state::{TOKEN_INFO, BALANCES};
 use cw20_base::contract::instantiate as cw20_instantiate;
 use cw20_base;
-use cw20::Cw20ReceiveMsg;
+use cw20::Cw20ExecuteMsg;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
+use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg };
 use crate::state::{State, STATE};
 
 // Note, you can use StdResult in some functions where you do not
@@ -46,7 +46,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
-        ExecuteMsg::Receive (msg) => try_receive(deps, info, msg),
+        ExecuteMsg::AddLiquidity {tokenAmount} => try_add_liquidity(deps, info, _env, tokenAmount),
     }
 }
 
@@ -70,20 +70,35 @@ pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Respons
     Ok(Response::default())
 }
 
-pub fn try_receive(deps: DepsMut, info: MessageInfo, wrapper: Cw20ReceiveMsg) -> Result<Response, ContractError> {
-    let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
-    match msg {
-        ReceiveMsg::AddLiquidity {} => try_add_liquidity(deps, info, wrapper.amount)
-    }
-}
+pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, token_amount: Uint128) -> Result<Response, ContractError> {
 
-pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, token_amount: Uint128) -> Result<Response, ContractError> {
+    let state = STATE.load(deps.storage).unwrap();
+
+     // create transfer cw20 msg
+     let transfer_cw20_msg = Cw20ExecuteMsg::TransferFrom {
+        owner: info.sender.clone().into(),
+        recipient: _env.contract.address.into(),
+        amount: token_amount,
+    };
+    let exec_cw20_transfer = WasmMsg::Execute {
+        contract_addr: state.tokenAddress.into(),
+        msg: to_binary(&transfer_cw20_msg)?,
+        send: vec![],
+    };
+    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
+
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
         state.tokenSupply += token_amount;
         state.nativeSupply.amount += info.funds[0].amount;
         Ok(state)
     })?;
-    Ok(Response::default())
+
+    Ok(Response {
+        messages: vec![cw20_transfer_cosmos_msg],
+        submessages: vec![],
+        attributes: vec![],
+        data: None,
+    })
 }
 
 #[entry_point]
