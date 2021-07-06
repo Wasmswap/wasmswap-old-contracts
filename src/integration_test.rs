@@ -65,7 +65,6 @@ fn sale_happy_path() {
     // set up sale contract
     let amm_id = router.store_code(contract_amm());
     let msg = InstantiateMsg {
-        count: 1,
         nativeDenom: NATIVE_TOKEN_DENOM.to_string(),
         tokenAddress: cash_addr.clone(),
     };
