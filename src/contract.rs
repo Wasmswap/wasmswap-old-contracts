@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128
 };
 use cw20_base::state::{TOKEN_INFO, BALANCES};
 use cw20_base::contract::instantiate as cw20_instantiate;
@@ -21,6 +21,9 @@ pub fn instantiate(
     let state = State {
         count: msg.count,
         owner: info.sender.clone(),
+        nativeSupply: Coin{denom:msg.nativeDenom, amount: Uint128(0)},
+        tokenAddress: msg.tokenAddress,
+        tokenSupply: Uint128(0),
     };
     STATE.save(deps.storage, &state)?;
 
