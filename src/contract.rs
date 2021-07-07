@@ -40,7 +40,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddLiquidity {min_liqudity, max_token} => try_add_liquidity(deps, info, _env, min_liqudity, max_token),
+        ExecuteMsg::AddLiquidity { min_liquidity, max_token} => try_add_liquidity(deps, info, _env, min_liquidity, max_token),
         ExecuteMsg::RemoveLiquidity {amount, min_native, min_token} => try_remove_liquidity(deps, info, _env, amount, min_native, min_token),
     }
 }
@@ -206,7 +206,7 @@ mod tests {
 
         // beneficiary can release it
         let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::AddLiquidity {min_liqudity: Uint128(1), max_token: Uint128(1) };
+        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(1), max_token: Uint128(1) };
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     }
 }

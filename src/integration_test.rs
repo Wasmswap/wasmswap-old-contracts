@@ -95,7 +95,7 @@ fn amm_happy_path() {
     assert_eq!(4, res.attributes.len());
 
     let add_liquidity_msg = ExecuteMsg::AddLiquidity {
-        min_liqudity: Uint128(100),
+        min_liquidity: Uint128(100),
         max_token: Uint128(100),
     };
     let res = router
@@ -124,7 +124,7 @@ fn amm_happy_path() {
     assert_eq!(4, res.attributes.len());
 
     let add_liquidity_msg = ExecuteMsg::AddLiquidity {
-        min_liqudity: Uint128(50),
+        min_liquidity: Uint128(50),
         max_token: Uint128(51),
     };
     let res = router
