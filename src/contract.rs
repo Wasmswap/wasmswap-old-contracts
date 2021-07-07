@@ -1,9 +1,8 @@
 use cosmwasm_std::{
-    attr, entry_point, from_binary, to_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    attr, entry_point, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, MinterResponse};
-use cw20_base;
 use cw20_base::contract::{
     execute_burn, execute_mint, instantiate as cw20_instantiate, query_balance,
 };
@@ -42,7 +41,7 @@ pub fn instantiate(
             decimals: 18,
             initial_balances: vec![],
             mint: Some(MinterResponse {
-                minter: _env.contract.address.clone().into(),
+                minter: _env.contract.address.into(),
                 cap: None,
             }),
         },
@@ -77,7 +76,7 @@ fn get_liquidity_amount(
     liquidity_supply: Uint128,
     native_supply: Uint128,
 ) -> Result<Uint128, ContractError> {
-    return if liquidity_supply == Uint128(0) {
+    if liquidity_supply == Uint128(0) {
         Ok(native_token_amount)
     } else {
         Ok(native_token_amount
@@ -85,7 +84,7 @@ fn get_liquidity_amount(
             .map_err(StdError::overflow)?
             .checked_div(native_supply)
             .map_err(StdError::divide_by_zero)?)
-    };
+    }
 }
 
 fn get_token_amount(
@@ -95,7 +94,7 @@ fn get_token_amount(
     token_supply: Uint128,
     native_supply: Uint128,
 ) -> Result<Uint128, ContractError> {
-    return if liquidity_supply == Uint128(0) {
+    if liquidity_supply == Uint128(0) {
         Ok(max_token)
     } else {
         Ok(native_token_amount
@@ -105,7 +104,7 @@ fn get_token_amount(
             .map_err(StdError::divide_by_zero)?
             .checked_add(Uint128(1))
             .map_err(StdError::overflow)?)
-    };
+    }
 }
 
 pub fn execute_add_liquidity(
@@ -169,7 +168,7 @@ pub fn execute_add_liquidity(
 
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
         state.token_supply += token_amount;
-        state.native_supply.amount += info.funds[0].amount.clone();
+        state.native_supply.amount += info.funds[0].amount;
         Ok(state)
     })?;
 
