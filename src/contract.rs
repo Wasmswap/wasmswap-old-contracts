@@ -149,7 +149,7 @@ pub fn execute_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amo
 
     let token_amount = amount.checked_mul(state.token_supply).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
     if token_amount < min_token {
-        return Err(ContractError::MinNative{requested: min_token, available: token_amount})
+        return Err(ContractError::MinToken{requested: min_token, available: token_amount})
     }
 
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
@@ -264,6 +264,54 @@ mod tests {
         let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(1), max_token: Uint128(500) };
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
+    }
 
+    #[test]
+    fn remove_liquidity() {
+        let mut deps = mock_dependencies(&coins(2, "token"));
+
+        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf") };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // Add initial liquidity
+        let info = mock_info("anyone", &coins(100, "test"));
+        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(100), max_token: Uint128(50) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        assert_eq!(3, res.attributes.len());
+        assert_eq!("100", res.attributes[0].value);
+        assert_eq!("50", res.attributes[1].value);
+        assert_eq!("100", res.attributes[2].value);
+
+        // Remove half liquidity
+        let info = mock_info("anyone", &vec![]);
+        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(50), min_native: Uint128(50), min_token: Uint128(25) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!("50", res.attributes[0].value);
+        assert_eq!("50", res.attributes[1].value);
+        assert_eq!("25", res.attributes[2].value);
+
+        // Remove half again with not proper division
+        let info = mock_info("anyone", &vec![]);
+        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(25), min_native: Uint128(25), min_token: Uint128(12) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!("25", res.attributes[0].value);
+        assert_eq!("25", res.attributes[1].value);
+        assert_eq!("12", res.attributes[2].value);
+
+        // Remove more than owned
+        let info = mock_info("anyone", &vec![]);
+        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(26), min_native: Uint128(1), min_token: Uint128(1) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
+        assert!(res.is_err());
+
+        // Remove rest of liquidity
+        let info = mock_info("anyone", &vec![]);
+        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(25), min_native: Uint128(1), min_token: Uint128(1) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!("25", res.attributes[0].value);
+        assert_eq!("25", res.attributes[1].value);
+        assert_eq!("13", res.attributes[2].value);
     }
 }
