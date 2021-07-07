@@ -45,7 +45,7 @@ pub fn execute(
     }
 }
 
-pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudity: Uint128, max_token: Uint128) -> Result<Response, ContractError> {
+pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liquidity: Uint128, max_token: Uint128) -> Result<Response, ContractError> {
 
     let state = STATE.load(deps.storage).unwrap();
 
@@ -73,8 +73,8 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
             .map_err(StdError::overflow)?
     };
 
-    if mint_amount < min_liqudity {
-        return Err(ContractError::MinLiquidityError{min_liquidity: min_liqudity, liquidity_available: mint_amount});
+    if mint_amount < min_liquidity {
+        return Err(ContractError::MinLiquidityError{min_liquidity, liquidity_available: mint_amount});
     }
 
     if token_amount > max_token {
