@@ -26,7 +26,7 @@ pub fn instantiate(
     };
     STATE.save(deps.storage, &state)?;
 
-    cw20_instantiate(deps,_env.clone(),info,cw20_base::msg::InstantiateMsg{name:"liquidity".into(),symbol:"AAAA".into(),decimals:0,initial_balances:vec![],mint:Some(MinterResponse{minter:_env.contract.address.clone().into(), cap: None})})?;
+    cw20_instantiate(deps,_env.clone(),info,cw20_base::msg::InstantiateMsg{name:"CRUST_LIQUIDITY_TOKEN".into(),symbol:"CRUST".into(),decimals:18,initial_balances:vec![],mint:Some(MinterResponse{minter:_env.contract.address.clone().into(), cap: None})})?;
 
     Ok(Response::default())
 }
