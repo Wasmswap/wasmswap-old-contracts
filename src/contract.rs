@@ -184,7 +184,11 @@ pub fn execute_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amo
     Ok(Response {
         messages: vec![transfer_bank_cosmos_msg, cw20_transfer_cosmos_msg],
         submessages: vec![],
-        attributes: vec![],
+        attributes: vec![
+            attr("liquidity_burned", amount),
+            attr("native_returned", native_amount),
+            attr("token_returned", token_amount),
+        ],
         data: None,
     })
 }
