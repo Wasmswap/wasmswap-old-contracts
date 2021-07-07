@@ -29,4 +29,7 @@ pub enum ContractError {
 
     #[error("MinTokenError")]
     MinToken {requested: Uint128, available: Uint128},
+
+    #[error("IncorrectNativeDenom")]
+    IncorrectNativeDenom {provided: String, required: String},
 }

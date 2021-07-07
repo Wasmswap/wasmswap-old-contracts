@@ -79,6 +79,10 @@ pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_li
 
     let liquidity = LIQUIDITY_INFO.load(deps.storage)?;
 
+    if info.funds[0].denom != state.native_supply.denom {
+        return Err(ContractError::IncorrectNativeDenom {provided: info.funds[0].denom.clone(), required: state.native_supply.denom})
+    }
+
     let liquidity_amount = get_liquidity_amount(info.funds[0].clone().amount, liquidity.total_supply, state.native_supply.amount)?;
 
     let token_amount= get_token_amount(max_token, info.funds[0].clone().amount, liquidity.total_supply, state.token_supply, state.native_supply.amount)?;
@@ -120,7 +124,11 @@ pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_li
     Ok(Response {
         messages: vec![cw20_transfer_cosmos_msg],
         submessages: vec![],
-        attributes: vec![],
+        attributes: vec![
+            attr("native_amount", info.funds[0].clone().amount),
+            attr("token_amount", token_amount),
+            attr("liquidity_received", liquidity_amount)
+        ],
         data: None,
     })
 }
@@ -207,7 +215,7 @@ mod tests {
     }
 
     #[test]
-    fn add_liqudity() {
+    fn add_liquidity() {
         let mut deps = mock_dependencies(&coins(2, "token"));
 
         let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf")};
@@ -217,6 +225,8 @@ mod tests {
         // beneficiary can release it
         let info = mock_info("anyone", &coins(2, "token"));
         let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(1), max_token: Uint128(1) };
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        assert_eq!(3, res.attributes.len())
     }
 }
