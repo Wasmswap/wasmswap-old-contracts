@@ -288,6 +288,18 @@ pub fn execute_remove_liquidity(
     })
 }
 
+fn getInputPrice(input_amount: Uint128, input_supply: Uint128, output_supply: Uint128) -> Result<Uint128, ContractError> {
+    if input_supply == 0 || output_supply == 0 {
+        return Err(ContractError::NoLiquidityError {})
+    };
+
+    let input_amount_with_fee = input_amount.checked_mul(Uint128(997)).map_err(StdError::overflow)?;
+    let numerator = input_amount_with_fee.checked_mul(output_supply).map_err(StdError::overflow)?;
+    let denominator = input_supply.checked_mul(Uint128(1000)).map_err(StdError::overflow).checked_add(input_amount_with_fee).map_err(StdError::overflow)?;
+
+    numerator.checked_div(denominator).map_err(StdError::divide_by_zero)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {

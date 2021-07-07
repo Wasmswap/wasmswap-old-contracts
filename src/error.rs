@@ -31,6 +31,9 @@ pub enum ContractError {
         available: Uint128,
     },
 
+    #[error("NoLiquidityError")]
+    NoLiquidityError {},
+
     #[error("MinNativeError")]
     MinNative {
         requested: Uint128,
