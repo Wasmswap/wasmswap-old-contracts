@@ -40,12 +40,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddLiquidity { min_liquidity, max_token} => try_add_liquidity(deps, info, _env, min_liquidity, max_token),
-        ExecuteMsg::RemoveLiquidity {amount, min_native, min_token} => try_remove_liquidity(deps, info, _env, amount, min_native, min_token),
+        ExecuteMsg::AddLiquidity { min_liquidity, max_token} => execute_add_liquidity(deps, info, _env, min_liquidity, max_token),
+        ExecuteMsg::RemoveLiquidity {amount, min_native, min_token} => execute_remove_liquidity(deps, info, _env, amount, min_native, min_token),
     }
 }
 
-pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liquidity: Uint128, max_token: Uint128) -> Result<Response, ContractError> {
+pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liquidity: Uint128, max_token: Uint128) -> Result<Response, ContractError> {
 
     let state = STATE.load(deps.storage).unwrap();
 
@@ -115,7 +115,7 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liquid
     })
 }
 
-pub fn try_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount: Uint128, min_native: Uint128, min_token: Uint128) -> Result<Response, ContractError> {
+pub fn execute_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount: Uint128, min_native: Uint128, min_token: Uint128) -> Result<Response, ContractError> {
     let balance = LIQUIDITY_BALANCES.load(deps.storage, &info.sender)?;
     let token = LIQUIDITY_TOKEN_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
