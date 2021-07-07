@@ -6,10 +6,10 @@ use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
-    pub nativeSupply: Coin,
+    pub native_supply: Coin,
 
-    pub tokenAddress: Addr,
-    pub tokenSupply: Uint128,
+    pub token_address: Addr,
+    pub token_supply: Uint128,
 }
 
 pub const STATE: Item<State> = Item::new("state");

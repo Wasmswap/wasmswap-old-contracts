@@ -20,9 +20,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let state = State {
-        nativeSupply: Coin{denom:msg.nativeDenom, amount: Uint128(0)},
-        tokenAddress: msg.tokenAddress,
-        tokenSupply: Uint128(0),
+        native_supply: Coin{denom:msg.nativeDenom, amount: Uint128(0)},
+        token_address: msg.tokenAddress,
+        token_supply: Uint128(0),
     };
     STATE.save(deps.storage, &state)?;
 
@@ -57,7 +57,7 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
         info.funds[0].clone().amount
             .checked_mul(token.total_supply)
             .map_err(StdError::overflow)?
-            .checked_div(state.nativeSupply.amount)
+            .checked_div(state.native_supply.amount)
             .map_err(StdError::divide_by_zero)?
     };
 
@@ -65,9 +65,9 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
         max_token
     } else {
         info.funds[0].clone().amount
-            .checked_mul(state.tokenSupply)
+            .checked_mul(state.token_supply)
             .map_err(StdError::overflow)?
-            .checked_div(state.nativeSupply.amount)
+            .checked_div(state.native_supply.amount)
             .map_err(StdError::divide_by_zero)?
             .checked_add(Uint128(1))
             .map_err(StdError::overflow)?
@@ -88,15 +88,15 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
         amount: token_amount,
     };
     let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: state.tokenAddress.into(),
+        contract_addr: state.token_address.into(),
         msg: to_binary(&transfer_cw20_msg)?,
         send: vec![],
     };
     let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
 
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.tokenSupply += token_amount;
-        state.nativeSupply.amount += info.funds[0].amount.clone();
+        state.token_supply += token_amount;
+        state.native_supply.amount += info.funds[0].amount.clone();
         Ok(state)
     })?;
 
@@ -124,26 +124,26 @@ pub fn try_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount:
         return Err(ContractError::InsufficientLiquidityError{requested: amount, available: balance});
     }
 
-    let native_amount = amount.checked_mul(state.nativeSupply.amount).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
+    let native_amount = amount.checked_mul(state.native_supply.amount).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
     if native_amount < min_native {
         return Err(ContractError::MinNative{requested: min_native, available: native_amount})
     }
 
-    let token_amount = amount.checked_mul(state.tokenSupply).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
+    let token_amount = amount.checked_mul(state.token_supply).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
     if token_amount < min_token {
         return Err(ContractError::MinNative{requested: min_token, available: token_amount})
     }
 
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.tokenSupply = state.tokenSupply.checked_sub(token_amount).map_err(StdError::overflow)?;
-        state.nativeSupply.amount = state.nativeSupply.amount.checked_sub(native_amount).map_err(StdError::overflow)?; 
+        state.token_supply = state.token_supply.checked_sub(token_amount).map_err(StdError::overflow)?;
+        state.native_supply.amount = state.native_supply.amount.checked_sub(native_amount).map_err(StdError::overflow)?;
         Ok(state)
     })?;
 
 
     let transfer_bank_msg = cosmwasm_std::BankMsg::Send {
         to_address: info.sender.clone().into(),
-        amount: vec!(Coin{denom:state.nativeSupply.denom,amount:native_amount}),
+        amount: vec!(Coin{denom:state.native_supply.denom,amount:native_amount}),
     };
 
     let transfer_bank_cosmos_msg: CosmosMsg = transfer_bank_msg.into();
@@ -154,7 +154,7 @@ pub fn try_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount:
         amount: token_amount,
     };
     let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: state.tokenAddress.into(),
+        contract_addr: state.token_address.into(),
         msg: to_binary(&transfer_cw20_msg)?,
         send: vec![],
     };
