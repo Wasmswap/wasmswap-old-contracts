@@ -1,10 +1,13 @@
 use cosmwasm_std::{
-    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg, StdError, attr
+    attr, entry_point, from_binary, to_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
-use cw20_base::state::{TOKEN_INFO as LIQUIDITY_INFO, BALANCES as LIQUIDITY_BALANCES};
-use cw20_base::contract::{instantiate as cw20_instantiate, execute_mint,query_balance, execute_burn};
-use cw20_base;
 use cw20::{Cw20ExecuteMsg, MinterResponse};
+use cw20_base;
+use cw20_base::contract::{
+    execute_burn, execute_mint, instantiate as cw20_instantiate, query_balance,
+};
+use cw20_base::state::{BALANCES as LIQUIDITY_BALANCES, TOKEN_INFO as LIQUIDITY_INFO};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -20,13 +23,30 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let state = State {
-        native_supply: Coin{denom:msg.native_denom, amount: Uint128(0)},
+        native_supply: Coin {
+            denom: msg.native_denom,
+            amount: Uint128(0),
+        },
         token_address: msg.token_address,
         token_supply: Uint128(0),
     };
     STATE.save(deps.storage, &state)?;
 
-    cw20_instantiate(deps,_env.clone(),info,cw20_base::msg::InstantiateMsg{name:"CRUST_LIQUIDITY_TOKEN".into(),symbol:"CRUST".into(),decimals:18,initial_balances:vec![],mint:Some(MinterResponse{minter:_env.contract.address.clone().into(), cap: None})})?;
+    cw20_instantiate(
+        deps,
+        _env.clone(),
+        info,
+        cw20_base::msg::InstantiateMsg {
+            name: "CRUST_LIQUIDITY_TOKEN".into(),
+            symbol: "CRUST".into(),
+            decimals: 18,
+            initial_balances: vec![],
+            mint: Some(MinterResponse {
+                minter: _env.contract.address.clone().into(),
+                cap: None,
+            }),
+        },
+    )?;
 
     Ok(Response::default())
 }
@@ -40,59 +60,98 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddLiquidity { min_liquidity, max_token} => execute_add_liquidity(deps, info, _env, min_liquidity, max_token),
-        ExecuteMsg::RemoveLiquidity {amount, min_native, min_token} => execute_remove_liquidity(deps, info, _env, amount, min_native, min_token),
+        ExecuteMsg::AddLiquidity {
+            min_liquidity,
+            max_token,
+        } => execute_add_liquidity(deps, info, _env, min_liquidity, max_token),
+        ExecuteMsg::RemoveLiquidity {
+            amount,
+            min_native,
+            min_token,
+        } => execute_remove_liquidity(deps, info, _env, amount, min_native, min_token),
     }
 }
 
-fn get_liquidity_amount(native_token_amount: Uint128, liquidity_supply: Uint128, native_supply: Uint128) -> Result<Uint128, ContractError> {
+fn get_liquidity_amount(
+    native_token_amount: Uint128,
+    liquidity_supply: Uint128,
+    native_supply: Uint128,
+) -> Result<Uint128, ContractError> {
     return if liquidity_supply == Uint128(0) {
         Ok(native_token_amount)
     } else {
-        Ok (native_token_amount
+        Ok(native_token_amount
             .checked_mul(liquidity_supply)
             .map_err(StdError::overflow)?
             .checked_div(native_supply)
-            .map_err(StdError::divide_by_zero)?
-        )
+            .map_err(StdError::divide_by_zero)?)
     };
 }
 
-fn get_token_amount(max_token: Uint128, native_token_amount: Uint128, liquidity_supply: Uint128, token_supply: Uint128, native_supply: Uint128) -> Result<Uint128, ContractError> {
+fn get_token_amount(
+    max_token: Uint128,
+    native_token_amount: Uint128,
+    liquidity_supply: Uint128,
+    token_supply: Uint128,
+    native_supply: Uint128,
+) -> Result<Uint128, ContractError> {
     return if liquidity_supply == Uint128(0) {
         Ok(max_token)
     } else {
-        Ok (native_token_amount
+        Ok(native_token_amount
             .checked_mul(token_supply)
             .map_err(StdError::overflow)?
             .checked_div(native_supply)
             .map_err(StdError::divide_by_zero)?
             .checked_add(Uint128(1))
-            .map_err(StdError::overflow)?
-        )
+            .map_err(StdError::overflow)?)
     };
 }
 
-pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liquidity: Uint128, max_token: Uint128) -> Result<Response, ContractError> {
-
+pub fn execute_add_liquidity(
+    deps: DepsMut,
+    info: MessageInfo,
+    _env: Env,
+    min_liquidity: Uint128,
+    max_token: Uint128,
+) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage).unwrap();
 
     let liquidity = LIQUIDITY_INFO.load(deps.storage)?;
 
     if info.funds[0].denom != state.native_supply.denom {
-        return Err(ContractError::IncorrectNativeDenom {provided: info.funds[0].denom.clone(), required: state.native_supply.denom})
+        return Err(ContractError::IncorrectNativeDenom {
+            provided: info.funds[0].denom.clone(),
+            required: state.native_supply.denom,
+        });
     }
 
-    let liquidity_amount = get_liquidity_amount(info.funds[0].clone().amount, liquidity.total_supply, state.native_supply.amount)?;
+    let liquidity_amount = get_liquidity_amount(
+        info.funds[0].clone().amount,
+        liquidity.total_supply,
+        state.native_supply.amount,
+    )?;
 
-    let token_amount= get_token_amount(max_token, info.funds[0].clone().amount, liquidity.total_supply, state.token_supply, state.native_supply.amount)?;
+    let token_amount = get_token_amount(
+        max_token,
+        info.funds[0].clone().amount,
+        liquidity.total_supply,
+        state.token_supply,
+        state.native_supply.amount,
+    )?;
 
     if liquidity_amount < min_liquidity {
-        return Err(ContractError::MinLiquidityError{min_liquidity, liquidity_available: liquidity_amount });
+        return Err(ContractError::MinLiquidityError {
+            min_liquidity,
+            liquidity_available: liquidity_amount,
+        });
     }
 
     if token_amount > max_token {
-        return Err(ContractError::MaxTokenError{max_token, tokens_required: token_amount});
+        return Err(ContractError::MaxTokenError {
+            max_token,
+            tokens_required: token_amount,
+        });
     }
 
     // create transfer cw20 msg
@@ -118,8 +177,13 @@ pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_li
         sender: _env.contract.address.clone(),
         funds: vec![],
     };
-    execute_mint(deps, _env, sub_info, info.sender.clone().into(), liquidity_amount)?;
-
+    execute_mint(
+        deps,
+        _env,
+        sub_info,
+        info.sender.clone().into(),
+        liquidity_amount,
+    )?;
 
     Ok(Response {
         messages: vec![cw20_transfer_cosmos_msg],
@@ -127,46 +191,79 @@ pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_li
         attributes: vec![
             attr("native_amount", info.funds[0].clone().amount),
             attr("token_amount", token_amount),
-            attr("liquidity_received", liquidity_amount)
+            attr("liquidity_received", liquidity_amount),
         ],
         data: None,
     })
 }
 
-pub fn execute_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount: Uint128, min_native: Uint128, min_token: Uint128) -> Result<Response, ContractError> {
+pub fn execute_remove_liquidity(
+    deps: DepsMut,
+    info: MessageInfo,
+    _env: Env,
+    amount: Uint128,
+    min_native: Uint128,
+    min_token: Uint128,
+) -> Result<Response, ContractError> {
     let balance = LIQUIDITY_BALANCES.load(deps.storage, &info.sender)?;
     let token = LIQUIDITY_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
 
     if amount > balance {
-        return Err(ContractError::InsufficientLiquidityError{requested: amount, available: balance});
+        return Err(ContractError::InsufficientLiquidityError {
+            requested: amount,
+            available: balance,
+        });
     }
 
-    let native_amount = amount.checked_mul(state.native_supply.amount).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
+    let native_amount = amount
+        .checked_mul(state.native_supply.amount)
+        .map_err(StdError::overflow)?
+        .checked_div(token.total_supply)
+        .map_err(StdError::divide_by_zero)?;
     if native_amount < min_native {
-        return Err(ContractError::MinNative{requested: min_native, available: native_amount})
+        return Err(ContractError::MinNative {
+            requested: min_native,
+            available: native_amount,
+        });
     }
 
-    let token_amount = amount.checked_mul(state.token_supply).map_err(StdError::overflow)?.checked_div(token.total_supply).map_err(StdError::divide_by_zero)?;
+    let token_amount = amount
+        .checked_mul(state.token_supply)
+        .map_err(StdError::overflow)?
+        .checked_div(token.total_supply)
+        .map_err(StdError::divide_by_zero)?;
     if token_amount < min_token {
-        return Err(ContractError::MinToken{requested: min_token, available: token_amount})
+        return Err(ContractError::MinToken {
+            requested: min_token,
+            available: token_amount,
+        });
     }
 
     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.token_supply = state.token_supply.checked_sub(token_amount).map_err(StdError::overflow)?;
-        state.native_supply.amount = state.native_supply.amount.checked_sub(native_amount).map_err(StdError::overflow)?;
+        state.token_supply = state
+            .token_supply
+            .checked_sub(token_amount)
+            .map_err(StdError::overflow)?;
+        state.native_supply.amount = state
+            .native_supply
+            .amount
+            .checked_sub(native_amount)
+            .map_err(StdError::overflow)?;
         Ok(state)
     })?;
 
-
     let transfer_bank_msg = cosmwasm_std::BankMsg::Send {
         to_address: info.sender.clone().into(),
-        amount: vec!(Coin{denom:state.native_supply.denom,amount:native_amount}),
+        amount: vec![Coin {
+            denom: state.native_supply.denom,
+            amount: native_amount,
+        }],
     };
 
     let transfer_bank_cosmos_msg: CosmosMsg = transfer_bank_msg.into();
 
-      // create transfer cw20 msg
+    // create transfer cw20 msg
     let transfer_cw20_msg = Cw20ExecuteMsg::Transfer {
         recipient: info.sender.clone().into(),
         amount: token_amount,
@@ -179,7 +276,6 @@ pub fn execute_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amo
     let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
 
     execute_burn(deps, _env, info, amount)?;
-
 
     Ok(Response {
         messages: vec![transfer_bank_cosmos_msg, cw20_transfer_cosmos_msg],
@@ -196,7 +292,7 @@ pub fn execute_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amo
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Balance {address} => to_binary(&query_balance(deps, address)?)
+        QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
     }
 }
 
@@ -210,7 +306,10 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf")};
+        let msg = InstantiateMsg {
+            native_denom: "test".to_string(),
+            token_address: Addr::unchecked("asdf"),
+        };
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -222,13 +321,19 @@ mod tests {
     fn add_liquidity() {
         let mut deps = mock_dependencies(&coins(2, "token"));
 
-        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf") };
+        let msg = InstantiateMsg {
+            native_denom: "test".to_string(),
+            token_address: Addr::unchecked("asdf"),
+        };
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // Add initial liquidity
         let info = mock_info("anyone", &coins(2, "test"));
-        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(2), max_token: Uint128(1) };
+        let msg = ExecuteMsg::AddLiquidity {
+            min_liquidity: Uint128(2),
+            max_token: Uint128(1),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         assert_eq!(3, res.attributes.len());
@@ -238,7 +343,10 @@ mod tests {
 
         // Add more liquidity
         let info = mock_info("anyone", &coins(4, "test"));
-        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(4), max_token: Uint128(3) };
+        let msg = ExecuteMsg::AddLiquidity {
+            min_liquidity: Uint128(4),
+            max_token: Uint128(3),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         assert_eq!(3, res.attributes.len());
@@ -248,20 +356,28 @@ mod tests {
 
         // Too low max_token
         let info = mock_info("anyone", &coins(100, "test"));
-        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(100), max_token: Uint128(1) };
+        let msg = ExecuteMsg::AddLiquidity {
+            min_liquidity: Uint128(100),
+            max_token: Uint128(1),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
 
-
         // Too high min liquidity
         let info = mock_info("anyone", &coins(100, "test"));
-        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(500), max_token: Uint128(500) };
+        let msg = ExecuteMsg::AddLiquidity {
+            min_liquidity: Uint128(500),
+            max_token: Uint128(500),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
 
         // Incorrect native denom throws error
         let info = mock_info("anyone", &coins(100, "wrong"));
-        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(1), max_token: Uint128(500) };
+        let msg = ExecuteMsg::AddLiquidity {
+            min_liquidity: Uint128(1),
+            max_token: Uint128(500),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
     }
@@ -270,13 +386,19 @@ mod tests {
     fn remove_liquidity() {
         let mut deps = mock_dependencies(&coins(2, "token"));
 
-        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf") };
+        let msg = InstantiateMsg {
+            native_denom: "test".to_string(),
+            token_address: Addr::unchecked("asdf"),
+        };
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // Add initial liquidity
         let info = mock_info("anyone", &coins(100, "test"));
-        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(100), max_token: Uint128(50) };
+        let msg = ExecuteMsg::AddLiquidity {
+            min_liquidity: Uint128(100),
+            max_token: Uint128(50),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         assert_eq!(3, res.attributes.len());
@@ -286,7 +408,11 @@ mod tests {
 
         // Remove half liquidity
         let info = mock_info("anyone", &vec![]);
-        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(50), min_native: Uint128(50), min_token: Uint128(25) };
+        let msg = ExecuteMsg::RemoveLiquidity {
+            amount: Uint128(50),
+            min_native: Uint128(50),
+            min_token: Uint128(25),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!("50", res.attributes[0].value);
         assert_eq!("50", res.attributes[1].value);
@@ -294,7 +420,11 @@ mod tests {
 
         // Remove half again with not proper division
         let info = mock_info("anyone", &vec![]);
-        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(25), min_native: Uint128(25), min_token: Uint128(12) };
+        let msg = ExecuteMsg::RemoveLiquidity {
+            amount: Uint128(25),
+            min_native: Uint128(25),
+            min_token: Uint128(12),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!("25", res.attributes[0].value);
         assert_eq!("25", res.attributes[1].value);
@@ -302,13 +432,21 @@ mod tests {
 
         // Remove more than owned
         let info = mock_info("anyone", &vec![]);
-        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(26), min_native: Uint128(1), min_token: Uint128(1) };
+        let msg = ExecuteMsg::RemoveLiquidity {
+            amount: Uint128(26),
+            min_native: Uint128(1),
+            min_token: Uint128(1),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg);
         assert!(res.is_err());
 
         // Remove rest of liquidity
         let info = mock_info("anyone", &vec![]);
-        let msg = ExecuteMsg::RemoveLiquidity { amount: Uint128(25), min_native: Uint128(1), min_token: Uint128(1) };
+        let msg = ExecuteMsg::RemoveLiquidity {
+            amount: Uint128(25),
+            min_native: Uint128(1),
+            min_token: Uint128(1),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!("25", res.attributes[0].value);
         assert_eq!("25", res.attributes[1].value);

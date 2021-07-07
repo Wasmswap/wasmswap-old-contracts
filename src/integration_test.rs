@@ -2,7 +2,8 @@
 
 use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
 use cosmwasm_std::{
-    coins, from_binary, to_binary, Addr, BalanceResponse, BankQuery, Coin, Empty, Uint128, CosmosMsg, WasmMsg
+    coins, from_binary, to_binary, Addr, BalanceResponse, BankQuery, Coin, CosmosMsg, Empty,
+    Uint128, WasmMsg,
 };
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use cw_multi_test::{App, Contract, ContractWrapper, SimpleBank};
@@ -98,8 +99,16 @@ fn amm_happy_path() {
         max_token: Uint128(100),
     };
     let res = router
-    .execute_contract(owner.clone(), amm_addr.clone(), &add_liquidity_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.into(), amount: Uint128(100)}])
-    .unwrap();
+        .execute_contract(
+            owner.clone(),
+            amm_addr.clone(),
+            &add_liquidity_msg,
+            &[Coin {
+                denom: NATIVE_TOKEN_DENOM.into(),
+                amount: Uint128(100),
+            }],
+        )
+        .unwrap();
     println!("{:?}", res.attributes);
 
     // ensure balances updated
@@ -127,8 +136,16 @@ fn amm_happy_path() {
         max_token: Uint128(51),
     };
     let res = router
-    .execute_contract(owner.clone(), amm_addr.clone(), &add_liquidity_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.into(), amount: Uint128(50)}])
-    .unwrap();
+        .execute_contract(
+            owner.clone(),
+            amm_addr.clone(),
+            &add_liquidity_msg,
+            &[Coin {
+                denom: NATIVE_TOKEN_DENOM.into(),
+                amount: Uint128(50),
+            }],
+        )
+        .unwrap();
     println!("{:?}", res.attributes);
 
     // ensure balances updated
@@ -145,8 +162,16 @@ fn amm_happy_path() {
         min_token: Uint128(50),
     };
     let res = router
-    .execute_contract(owner.clone(), amm_addr.clone(), &remove_liquidity_msg, &[Coin{denom: NATIVE_TOKEN_DENOM.into(), amount: Uint128(50)}])
-    .unwrap();
+        .execute_contract(
+            owner.clone(),
+            amm_addr.clone(),
+            &remove_liquidity_msg,
+            &[Coin {
+                denom: NATIVE_TOKEN_DENOM.into(),
+                amount: Uint128(50),
+            }],
+        )
+        .unwrap();
     println!("{:?}", res.attributes);
 
     // ensure balances updated

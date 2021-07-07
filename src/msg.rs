@@ -1,8 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw20::Cw20ReceiveMsg;
 use cosmwasm_std::{Addr, Uint128};
+use cw20::Cw20ReceiveMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -13,8 +13,15 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    AddLiquidity { min_liquidity: Uint128, max_token: Uint128},
-    RemoveLiquidity { amount: Uint128, min_native: Uint128, min_token: Uint128},
+    AddLiquidity {
+        min_liquidity: Uint128,
+        max_token: Uint128,
+    },
+    RemoveLiquidity {
+        amount: Uint128,
+        min_native: Uint128,
+        min_token: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
