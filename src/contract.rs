@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg, StdError
 };
-use cw20_base::state::{TOKEN_INFO, BALANCES};
+use cw20_base::state::{TOKEN_INFO as LIQUIDITY_TOKEN_INFO, BALANCES as LIQUIDITY_BALANCES};
 use cw20_base::contract::{instantiate as cw20_instantiate, execute_mint,query_balance, execute_burn};
 use cw20_base;
 use cw20::{Cw20ExecuteMsg, MinterResponse};
@@ -49,7 +49,7 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
 
     let state = STATE.load(deps.storage).unwrap();
 
-    let token = TOKEN_INFO.load(deps.storage)?;
+    let token = LIQUIDITY_TOKEN_INFO.load(deps.storage)?;
 
     let mint_amount = if token.total_supply == Uint128(0) {
         info.funds[0].clone().amount
@@ -116,8 +116,8 @@ pub fn try_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liqudi
 }
 
 pub fn try_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount: Uint128, min_native: Uint128, min_token: Uint128) -> Result<Response, ContractError> {
-    let balance = BALANCES.load(deps.storage, &info.sender)?;
-    let token = TOKEN_INFO.load(deps.storage)?;
+    let balance = LIQUIDITY_BALANCES.load(deps.storage, &info.sender)?;
+    let token = LIQUIDITY_TOKEN_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
 
     if amount > balance {
