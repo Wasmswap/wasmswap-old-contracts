@@ -218,15 +218,48 @@ mod tests {
     fn add_liquidity() {
         let mut deps = mock_dependencies(&coins(2, "token"));
 
-        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf")};
+        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf") };
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        // beneficiary can release it
-        let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(1), max_token: Uint128(1) };
+        // Add initial liquidity
+        let info = mock_info("anyone", &coins(2, "test"));
+        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(2), max_token: Uint128(1) };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        assert_eq!(3, res.attributes.len())
+        assert_eq!(3, res.attributes.len());
+        assert_eq!("2", res.attributes[0].value);
+        assert_eq!("1", res.attributes[1].value);
+        assert_eq!("2", res.attributes[2].value);
+
+        // Add more liquidity
+        let info = mock_info("anyone", &coins(4, "test"));
+        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(4), max_token: Uint128(3) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        assert_eq!(3, res.attributes.len());
+        assert_eq!("4", res.attributes[0].value);
+        assert_eq!("3", res.attributes[1].value);
+        assert_eq!("4", res.attributes[2].value);
+
+        // Too low max_token
+        let info = mock_info("anyone", &coins(100, "test"));
+        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(100), max_token: Uint128(1) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
+        assert!(res.is_err());
+
+
+        // Too high min liquidity
+        let info = mock_info("anyone", &coins(100, "test"));
+        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(500), max_token: Uint128(500) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
+        assert!(res.is_err());
+
+        // Incorrect native denom throws error
+        let info = mock_info("anyone", &coins(100, "wrong"));
+        let msg = ExecuteMsg::AddLiquidity { min_liquidity: Uint128(1), max_token: Uint128(500) };
+        let res = execute(deps.as_mut(), mock_env(), info, msg);
+        assert!(res.is_err());
+
     }
 }
