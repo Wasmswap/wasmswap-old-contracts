@@ -20,8 +20,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let state = State {
-        native_supply: Coin{denom:msg.nativeDenom, amount: Uint128(0)},
-        token_address: msg.tokenAddress,
+        native_supply: Coin{denom:msg.native_denom, amount: Uint128(0)},
+        token_address: msg.token_address,
         token_supply: Uint128(0),
     };
     STATE.save(deps.storage, &state)?;
@@ -188,7 +188,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
 
-        let msg = InstantiateMsg { nativeDenom: "test".to_string(), tokenAddress: Addr::unchecked("asdf")};
+        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf")};
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -200,7 +200,7 @@ mod tests {
     fn add_liqudity() {
         let mut deps = mock_dependencies(&coins(2, "token"));
 
-        let msg = InstantiateMsg { nativeDenom: "test".to_string(), tokenAddress: Addr::unchecked("asdf")};
+        let msg = InstantiateMsg { native_denom: "test".to_string(), token_address: Addr::unchecked("asdf")};
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 

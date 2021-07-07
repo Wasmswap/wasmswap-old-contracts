@@ -6,8 +6,8 @@ use cosmwasm_std::{Addr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub nativeDenom: String,
-    pub tokenAddress: Addr,
+    pub native_denom: String,
+    pub token_address: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
