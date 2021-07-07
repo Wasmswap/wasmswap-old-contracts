@@ -92,7 +92,6 @@ fn amm_happy_path() {
         .execute_contract(owner.clone(), cash_addr.clone(), &allowance_msg, &[])
         .unwrap();
     println!("{:?}", res.attributes);
-    assert_eq!(4, res.attributes.len());
 
     let add_liquidity_msg = ExecuteMsg::AddLiquidity {
         min_liquidity: Uint128(100),
