@@ -1,7 +1,7 @@
 use cosmwasm_std::{
-    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg, StdError
+    entry_point, to_binary, from_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, Uint128, Addr, WasmMsg, CosmosMsg, StdError, attr
 };
-use cw20_base::state::{TOKEN_INFO as LIQUIDITY_TOKEN_INFO, BALANCES as LIQUIDITY_BALANCES};
+use cw20_base::state::{TOKEN_INFO as LIQUIDITY_INFO, BALANCES as LIQUIDITY_BALANCES};
 use cw20_base::contract::{instantiate as cw20_instantiate, execute_mint,query_balance, execute_burn};
 use cw20_base;
 use cw20::{Cw20ExecuteMsg, MinterResponse};
@@ -45,40 +45,50 @@ pub fn execute(
     }
 }
 
+fn get_liquidity_amount(native_token_amount: Uint128, liquidity_supply: Uint128, native_supply: Uint128) -> Result<Uint128, ContractError> {
+    return if liquidity_supply == Uint128(0) {
+        Ok(native_token_amount)
+    } else {
+        Ok (native_token_amount
+            .checked_mul(liquidity_supply)
+            .map_err(StdError::overflow)?
+            .checked_div(native_supply)
+            .map_err(StdError::divide_by_zero)?
+        )
+    };
+}
+
+fn get_token_amount(max_token: Uint128, native_token_amount: Uint128, liquidity_supply: Uint128, token_supply: Uint128, native_supply: Uint128) -> Result<Uint128, ContractError> {
+    return if liquidity_supply == Uint128(0) {
+        Ok(max_token)
+    } else {
+        Ok (native_token_amount
+            .checked_mul(token_supply)
+            .map_err(StdError::overflow)?
+            .checked_div(native_supply)
+            .map_err(StdError::divide_by_zero)?
+            .checked_add(Uint128(1))
+            .map_err(StdError::overflow)?
+        )
+    };
+}
+
 pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_liquidity: Uint128, max_token: Uint128) -> Result<Response, ContractError> {
 
     let state = STATE.load(deps.storage).unwrap();
 
-    let token = LIQUIDITY_TOKEN_INFO.load(deps.storage)?;
+    let liquidity = LIQUIDITY_INFO.load(deps.storage)?;
 
-    let mint_amount = if token.total_supply == Uint128(0) {
-        info.funds[0].clone().amount
-    } else {
-        info.funds[0].clone().amount
-            .checked_mul(token.total_supply)
-            .map_err(StdError::overflow)?
-            .checked_div(state.native_supply.amount)
-            .map_err(StdError::divide_by_zero)?
-    };
+    let liquidity_amount = get_liquidity_amount(info.funds[0].clone().amount, liquidity.total_supply, state.native_supply.amount)?;
 
-    let token_amount= if token.total_supply == Uint128(0) {
-        max_token
-    } else {
-        info.funds[0].clone().amount
-            .checked_mul(state.token_supply)
-            .map_err(StdError::overflow)?
-            .checked_div(state.native_supply.amount)
-            .map_err(StdError::divide_by_zero)?
-            .checked_add(Uint128(1))
-            .map_err(StdError::overflow)?
-    };
+    let token_amount= get_token_amount(max_token, info.funds[0].clone().amount, liquidity.total_supply, state.token_supply, state.native_supply.amount)?;
 
-    if mint_amount < min_liquidity {
-        return Err(ContractError::MinLiquidityError{min_liquidity, liquidity_available: mint_amount});
+    if liquidity_amount < min_liquidity {
+        return Err(ContractError::MinLiquidityError{min_liquidity, liquidity_available: liquidity_amount });
     }
 
     if token_amount > max_token {
-        return Err(ContractError::MaxTokenError{max_token: max_token, tokens_required: token_amount});
+        return Err(ContractError::MaxTokenError{max_token, tokens_required: token_amount});
     }
 
     // create transfer cw20 msg
@@ -104,7 +114,7 @@ pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_li
         sender: _env.contract.address.clone(),
         funds: vec![],
     };
-    execute_mint(deps, _env, sub_info, info.sender.clone().into(), mint_amount)?;
+    execute_mint(deps, _env, sub_info, info.sender.clone().into(), liquidity_amount)?;
 
 
     Ok(Response {
@@ -117,7 +127,7 @@ pub fn execute_add_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, min_li
 
 pub fn execute_remove_liquidity(deps: DepsMut, info: MessageInfo, _env: Env, amount: Uint128, min_native: Uint128, min_token: Uint128) -> Result<Response, ContractError> {
     let balance = LIQUIDITY_BALANCES.load(deps.storage, &info.sender)?;
-    let token = LIQUIDITY_TOKEN_INFO.load(deps.storage)?;
+    let token = LIQUIDITY_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
 
     if amount > balance {
