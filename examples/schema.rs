@@ -3,7 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use amm::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use amm::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, InfoResponse};
+use cw20::{BalanceResponse};
 use amm::state::State;
 
 fn main() {
@@ -16,4 +17,6 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(State), &out_dir);
+    export_schema(&schema_for!(BalanceResponse), &out_dir);
+    export_schema(&schema_for!(InfoResponse), &out_dir);
 }
