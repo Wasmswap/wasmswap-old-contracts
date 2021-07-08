@@ -23,7 +23,11 @@ pub enum ExecuteMsg {
     },
     NativeForTokenSwapInput {
         min_token: Uint128
-    }
+    },
+    TokenForNativeSwapInput {
+        token_amount: Uint128,
+        min_native: Uint128
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
