@@ -1,11 +1,11 @@
 #![cfg(test)]
 
-use cosmwasm_std::testing::{mock_env, MockApi, MockStorage };
-use cosmwasm_std::{coins, Addr, Coin, Empty, Uint128, BalanceResponse, BankQuery, from_binary};
+use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
+use cosmwasm_std::{coins, from_binary, Addr, BalanceResponse, BankQuery, Coin, Empty, Uint128};
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use cw_multi_test::{App, Contract, ContractWrapper, SimpleBank};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, InfoResponse, QueryMsg};
+use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
 
 fn mock_app() -> App {
     let env = mock_env();
@@ -34,7 +34,10 @@ pub fn contract_cw20() -> Box<dyn Contract<Empty>> {
 }
 
 fn get_info(router: &App, contract_addr: &Addr) -> InfoResponse {
-    router.wrap().query_wasm_smart(contract_addr, &QueryMsg::Info {}).unwrap()
+    router
+        .wrap()
+        .query_wasm_smart(contract_addr, &QueryMsg::Info {})
+        .unwrap()
 }
 
 #[test]
@@ -296,7 +299,7 @@ fn swap_tokens_happy_path() {
                 address: buyer.to_string(),
                 denom: NATIVE_TOKEN_DENOM.to_string(),
             })
-                .into(),
+            .into(),
         )
         .unwrap();
     let balance: BalanceResponse = from_binary(&query_res).unwrap();
@@ -333,7 +336,7 @@ fn swap_tokens_happy_path() {
                 address: buyer.to_string(),
                 denom: NATIVE_TOKEN_DENOM.to_string(),
             })
-                .into(),
+            .into(),
         )
         .unwrap();
     let balance: BalanceResponse = from_binary(&query_res).unwrap();
@@ -357,12 +360,7 @@ fn swap_tokens_happy_path() {
         min_native: Uint128(19),
     };
     let res = router
-        .execute_contract(
-            buyer.clone(),
-            amm_addr.clone(),
-            &swap_msg,
-            &vec![],
-        )
+        .execute_contract(buyer.clone(), amm_addr.clone(), &swap_msg, &vec![])
         .unwrap();
     println!("{:?}", res.attributes);
 
@@ -381,7 +379,7 @@ fn swap_tokens_happy_path() {
                 address: buyer.to_string(),
                 denom: NATIVE_TOKEN_DENOM.to_string(),
             })
-                .into(),
+            .into(),
         )
         .unwrap();
     let balance: BalanceResponse = from_binary(&query_res).unwrap();
