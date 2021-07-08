@@ -9,10 +9,8 @@ use cw20_base::contract::{
 use cw20_base::state::{BALANCES as LIQUIDITY_BALANCES, TOKEN_INFO as LIQUIDITY_INFO};
 
 use crate::error::ContractError;
-use crate::msg::QueryMsg::Info;
 use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
 use crate::state::{State, STATE};
-use std::cmp::min;
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
@@ -355,7 +353,7 @@ pub fn execute_native_for_token_swap_input(
 
     // create transfer cw20 msg
     let transfer_cw20_msg = Cw20ExecuteMsg::Transfer {
-        recipient: info.sender.clone().into(),
+        recipient: info.sender.into(),
         amount: token_bought,
     };
     let exec_cw20_transfer = WasmMsg::Execute {
@@ -411,7 +409,7 @@ pub fn execute_token_for_native_swap_input(
     // Transfer tokens to contract
     let transfer_cw20_msg = Cw20ExecuteMsg::TransferFrom {
         owner: info.sender.clone().into(),
-        recipient: _env.contract.address.clone().into(),
+        recipient: _env.contract.address.into(),
         amount: token_amount,
     };
     let exec_cw20_transfer = WasmMsg::Execute {
@@ -423,7 +421,7 @@ pub fn execute_token_for_native_swap_input(
 
     // Send native tokens to buyer
     let transfer_bank_msg = cosmwasm_std::BankMsg::Send {
-        to_address: info.sender.clone().into(),
+        to_address: info.sender.into(),
         amount: vec![Coin {
             denom: state.native_supply.denom,
             amount: native_bought,
