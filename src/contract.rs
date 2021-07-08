@@ -476,7 +476,7 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, Addr};
 
-    fn getInfo(deps: Deps) -> InfoResponse {
+    fn get_info(deps: Deps) -> InfoResponse {
         query_info(deps).unwrap()
     }
 
@@ -666,7 +666,7 @@ mod tests {
             min_liquidity: Uint128(100),
             max_token: Uint128(100),
         };
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // Swap tokens
         let info = mock_info("anyone", &coins(10, "test"));
@@ -678,7 +678,7 @@ mod tests {
         assert_eq!("10", res.attributes[0].value);
         assert_eq!("9", res.attributes[1].value);
 
-        let info = getInfo(deps.as_ref());
+        let info = get_info(deps.as_ref());
         assert_eq!(Uint128(110), info.native_supply);
         assert_eq!(Uint128(91), info.token_supply);
 
@@ -692,7 +692,7 @@ mod tests {
         assert_eq!("10", res.attributes[0].value);
         assert_eq!("7", res.attributes[1].value);
 
-        let info = getInfo(deps.as_ref());
+        let info = get_info(deps.as_ref());
         assert_eq!(Uint128(120), info.native_supply);
         assert_eq!(Uint128(84), info.token_supply);
 
@@ -728,7 +728,7 @@ mod tests {
             min_liquidity: Uint128(100),
             max_token: Uint128(100),
         };
-        let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // Swap tokens
         let info = mock_info("anyone", &vec![]);
@@ -741,7 +741,7 @@ mod tests {
         assert_eq!("10", res.attributes[0].value);
         assert_eq!("9", res.attributes[1].value);
 
-        let info = getInfo(deps.as_ref());
+        let info = get_info(deps.as_ref());
         assert_eq!(Uint128(110), info.token_supply);
         assert_eq!(Uint128(91), info.native_supply);
 
@@ -756,7 +756,7 @@ mod tests {
         assert_eq!("10", res.attributes[0].value);
         assert_eq!("7", res.attributes[1].value);
 
-        let info = getInfo(deps.as_ref());
+        let info = get_info(deps.as_ref());
         assert_eq!(Uint128(120), info.token_supply);
         assert_eq!(Uint128(84), info.native_supply);
 
