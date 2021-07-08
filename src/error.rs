@@ -49,6 +49,6 @@ pub enum ContractError {
     #[error("IncorrectNativeDenom")]
     IncorrectNativeDenom { provided: String, required: String },
 
-    #[error("InputMinError")]
-    InputMinError { min: Uint128, available: Uint128 },
+    #[error("SwapMinError")]
+    SwapMinError { min: Uint128, available: Uint128 },
 }

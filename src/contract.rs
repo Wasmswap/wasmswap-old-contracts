@@ -347,7 +347,7 @@ pub fn execute_native_for_token_swap_input(
     )?;
 
     if min_token > token_bought {
-        return Err(ContractError::InputMinError {
+        return Err(ContractError::SwapMinError {
             min: min_token,
             available: token_bought,
         });
@@ -402,7 +402,7 @@ pub fn execute_token_for_native_swap_input(
         get_input_price(token_amount, state.token_supply, state.native_supply.amount)?;
 
     if min_native > native_bought {
-        return Err(ContractError::InputMinError {
+        return Err(ContractError::SwapMinError {
             min: min_native,
             available: native_bought,
         });
@@ -706,7 +706,7 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(
             err,
-            ContractError::InputMinError {
+            ContractError::SwapMinError {
                 min: Uint128(100),
                 available: Uint128(6)
             }
@@ -771,7 +771,7 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(
             err,
-            ContractError::InputMinError {
+            ContractError::SwapMinError {
                 min: Uint128(100),
                 available: Uint128(6)
             }
