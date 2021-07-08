@@ -9,10 +9,10 @@ use cw20_base::contract::{
 use cw20_base::state::{BALANCES as LIQUIDITY_BALANCES, TOKEN_INFO as LIQUIDITY_INFO};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, InfoResponse};
+use crate::msg::QueryMsg::Info;
+use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
 use crate::state::{State, STATE};
 use std::cmp::min;
-use crate::msg::QueryMsg::Info;
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
@@ -70,8 +70,13 @@ pub fn execute(
             min_native,
             min_token,
         } => execute_remove_liquidity(deps, info, _env, amount, min_native, min_token),
-        ExecuteMsg::NativeForTokenSwapInput {min_token} => execute_native_for_token_swap_input(deps, info, _env, min_token),
-        ExecuteMsg::TokenForNativeSwapInput {token_amount, min_native} => execute_token_for_native_swap_input(deps, info, _env, token_amount, min_native),
+        ExecuteMsg::NativeForTokenSwapInput { min_token } => {
+            execute_native_for_token_swap_input(deps, info, _env, min_token)
+        }
+        ExecuteMsg::TokenForNativeSwapInput {
+            token_amount,
+            min_native,
+        } => execute_token_for_native_swap_input(deps, info, _env, token_amount, min_native),
     }
 }
 
@@ -292,19 +297,38 @@ pub fn execute_remove_liquidity(
     })
 }
 
-fn get_input_price(input_amount: Uint128, input_supply: Uint128, output_supply: Uint128) -> Result<Uint128, ContractError> {
+fn get_input_price(
+    input_amount: Uint128,
+    input_supply: Uint128,
+    output_supply: Uint128,
+) -> Result<Uint128, ContractError> {
     if input_supply == Uint128(0) || output_supply == Uint128(0) {
-        return Err(ContractError::NoLiquidityError {})
+        return Err(ContractError::NoLiquidityError {});
     };
 
-    let input_amount_with_fee = input_amount.checked_mul(Uint128(997)).map_err(StdError::overflow)?;
-    let numerator = input_amount_with_fee.checked_mul(output_supply).map_err(StdError::overflow)?;
-    let denominator = input_supply.checked_mul(Uint128(1000)).map_err(StdError::overflow)?.checked_add(input_amount_with_fee).map_err(StdError::overflow)?;
+    let input_amount_with_fee = input_amount
+        .checked_mul(Uint128(997))
+        .map_err(StdError::overflow)?;
+    let numerator = input_amount_with_fee
+        .checked_mul(output_supply)
+        .map_err(StdError::overflow)?;
+    let denominator = input_supply
+        .checked_mul(Uint128(1000))
+        .map_err(StdError::overflow)?
+        .checked_add(input_amount_with_fee)
+        .map_err(StdError::overflow)?;
 
-    Ok(numerator.checked_div(denominator).map_err(StdError::divide_by_zero)?)
+    Ok(numerator
+        .checked_div(denominator)
+        .map_err(StdError::divide_by_zero)?)
 }
 
-pub fn execute_native_for_token_swap_input(deps: DepsMut, info: MessageInfo, _env: Env, min_token: Uint128) -> Result<Response, ContractError> {
+pub fn execute_native_for_token_swap_input(
+    deps: DepsMut,
+    info: MessageInfo,
+    _env: Env,
+    min_token: Uint128,
+) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
 
     if info.funds[0].denom != state.native_supply.denom {
@@ -316,10 +340,17 @@ pub fn execute_native_for_token_swap_input(deps: DepsMut, info: MessageInfo, _en
 
     let native_amount = info.funds[0].amount;
 
-    let token_bought = get_input_price(native_amount, state.native_supply.amount, state.token_supply)?;
+    let token_bought = get_input_price(
+        native_amount,
+        state.native_supply.amount,
+        state.token_supply,
+    )?;
 
     if min_token > token_bought {
-        return Err(ContractError::InputMinError {min: min_token, available: token_bought})
+        return Err(ContractError::InputMinError {
+            min: min_token,
+            available: token_bought,
+        });
     }
 
     // create transfer cw20 msg
@@ -356,16 +387,25 @@ pub fn execute_native_for_token_swap_input(deps: DepsMut, info: MessageInfo, _en
         ],
         data: None,
     })
-
 }
 
-pub fn execute_token_for_native_swap_input(deps: DepsMut, info: MessageInfo, _env: Env, token_amount: Uint128, min_native: Uint128) -> Result<Response, ContractError> {
+pub fn execute_token_for_native_swap_input(
+    deps: DepsMut,
+    info: MessageInfo,
+    _env: Env,
+    token_amount: Uint128,
+    min_native: Uint128,
+) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
 
-    let native_bought = get_input_price(token_amount, state.token_supply, state.native_supply.amount)?;
+    let native_bought =
+        get_input_price(token_amount, state.token_supply, state.native_supply.amount)?;
 
     if min_native > native_bought {
-        return Err(ContractError::InputMinError {min: min_native, available: native_bought})
+        return Err(ContractError::InputMinError {
+            min: min_native,
+            available: native_bought,
+        });
     }
 
     // Transfer tokens to contract
@@ -413,7 +453,6 @@ pub fn execute_token_for_native_swap_input(deps: DepsMut, info: MessageInfo, _en
         ],
         data: None,
     })
-
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -439,7 +478,7 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, Addr};
 
-    fn getInfo(deps:Deps) -> InfoResponse {
+    fn getInfo(deps: Deps) -> InfoResponse {
         query_info(deps).unwrap()
     }
 
@@ -603,19 +642,13 @@ mod tests {
         );
 
         // No input supply error
-        assert!(
-            get_input_price(Uint128(10), Uint128(0), Uint128(100)).is_err()
-        );
+        assert!(get_input_price(Uint128(10), Uint128(0), Uint128(100)).is_err());
 
         // No output supply error
-        assert!(
-            get_input_price(Uint128(10), Uint128(100), Uint128(0)).is_err()
-        );
+        assert!(get_input_price(Uint128(10), Uint128(100), Uint128(0)).is_err());
 
         // No supply error
-        assert!(
-            get_input_price(Uint128(10), Uint128(0), Uint128(0)).is_err()
-        );
+        assert!(get_input_price(Uint128(10), Uint128(0), Uint128(0)).is_err());
     }
 
     #[test]
@@ -640,7 +673,7 @@ mod tests {
         // Swap tokens
         let info = mock_info("anyone", &coins(10, "test"));
         let msg = ExecuteMsg::NativeForTokenSwapInput {
-           min_token: Uint128(9)
+            min_token: Uint128(9),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(2, res.attributes.len());
@@ -654,7 +687,7 @@ mod tests {
         // Second purchase at higher price
         let info = mock_info("anyone", &coins(10, "test"));
         let msg = ExecuteMsg::NativeForTokenSwapInput {
-            min_token: Uint128(7)
+            min_token: Uint128(7),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(2, res.attributes.len());
@@ -668,10 +701,16 @@ mod tests {
         // min_token error
         let info = mock_info("anyone", &coins(10, "test"));
         let msg = ExecuteMsg::NativeForTokenSwapInput {
-            min_token: Uint128(100)
+            min_token: Uint128(100),
         };
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        assert_eq!(err, ContractError::InputMinError {min:Uint128(100),available:Uint128(6)});
+        assert_eq!(
+            err,
+            ContractError::InputMinError {
+                min: Uint128(100),
+                available: Uint128(6)
+            }
+        );
     }
 
     #[test]
@@ -694,10 +733,10 @@ mod tests {
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // Swap tokens
-        let info = mock_info("anyone",&vec![]);
+        let info = mock_info("anyone", &vec![]);
         let msg = ExecuteMsg::TokenForNativeSwapInput {
             token_amount: Uint128(10),
-            min_native: Uint128(9)
+            min_native: Uint128(9),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(2, res.attributes.len());
@@ -712,7 +751,7 @@ mod tests {
         let info = mock_info("anyone", &vec![]);
         let msg = ExecuteMsg::TokenForNativeSwapInput {
             token_amount: Uint128(10),
-            min_native: Uint128(7)
+            min_native: Uint128(7),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(2, res.attributes.len());
@@ -727,10 +766,15 @@ mod tests {
         let info = mock_info("anyone", &vec![]);
         let msg = ExecuteMsg::TokenForNativeSwapInput {
             token_amount: Uint128(10),
-            min_native: Uint128(100)
+            min_native: Uint128(100),
         };
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        assert_eq!(err, ContractError::InputMinError {min:Uint128(100),available:Uint128(6)});
+        assert_eq!(
+            err,
+            ContractError::InputMinError {
+                min: Uint128(100),
+                available: Uint128(6)
+            }
+        );
     }
-
 }

@@ -22,11 +22,11 @@ pub enum ExecuteMsg {
         min_token: Uint128,
     },
     NativeForTokenSwapInput {
-        min_token: Uint128
+        min_token: Uint128,
     },
     TokenForNativeSwapInput {
         token_amount: Uint128,
-        min_native: Uint128
+        min_native: Uint128,
     },
 }
 
@@ -34,7 +34,9 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Implements CW20. Returns the current balance of the given address, 0 if unset.
-    Balance { address: String },
+    Balance {
+        address: String,
+    },
     Info {},
 }
 

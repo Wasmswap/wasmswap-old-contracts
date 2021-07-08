@@ -50,8 +50,5 @@ pub enum ContractError {
     IncorrectNativeDenom { provided: String, required: String },
 
     #[error("InputMinError")]
-    InputMinError {
-        min: Uint128,
-        available: Uint128,
-    },
+    InputMinError { min: Uint128, available: Uint128 },
 }
