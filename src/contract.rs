@@ -69,10 +69,10 @@ pub fn execute(
             min_native,
             min_token,
         } => execute_remove_liquidity(deps, info, _env, amount, min_native, min_token),
-        ExecuteMsg::NativeForTokenSwap { min_token } => {
+        ExecuteMsg::SwapNativeForToken { min_token } => {
             execute_native_for_token_swap(deps, info, _env, min_token)
         }
-        ExecuteMsg::TokenForNativeSwap {
+        ExecuteMsg::SwapTokenForNative {
             token_amount,
             min_native,
         } => execute_token_for_native_swap(deps, info, _env, token_amount, min_native),
@@ -783,7 +783,7 @@ mod tests {
 
         // Swap tokens
         let info = mock_info("anyone", &coins(10, "test"));
-        let msg = ExecuteMsg::NativeForTokenSwap {
+        let msg = ExecuteMsg::SwapNativeForToken {
             min_token: Uint128(9),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -797,7 +797,7 @@ mod tests {
 
         // Second purchase at higher price
         let info = mock_info("anyone", &coins(10, "test"));
-        let msg = ExecuteMsg::NativeForTokenSwap {
+        let msg = ExecuteMsg::SwapNativeForToken {
             min_token: Uint128(7),
         };
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -811,7 +811,7 @@ mod tests {
 
         // min_token error
         let info = mock_info("anyone", &coins(10, "test"));
-        let msg = ExecuteMsg::NativeForTokenSwap {
+        let msg = ExecuteMsg::SwapNativeForToken {
             min_token: Uint128(100),
         };
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
@@ -845,7 +845,7 @@ mod tests {
 
         // Swap tokens
         let info = mock_info("anyone", &vec![]);
-        let msg = ExecuteMsg::TokenForNativeSwap {
+        let msg = ExecuteMsg::SwapTokenForNative {
             token_amount: Uint128(10),
             min_native: Uint128(9),
         };
@@ -860,7 +860,7 @@ mod tests {
 
         // Second purchase at higher price
         let info = mock_info("anyone", &vec![]);
-        let msg = ExecuteMsg::TokenForNativeSwap {
+        let msg = ExecuteMsg::SwapTokenForNative {
             token_amount: Uint128(10),
             min_native: Uint128(7),
         };
@@ -875,7 +875,7 @@ mod tests {
 
         // min_token error
         let info = mock_info("anyone", &vec![]);
-        let msg = ExecuteMsg::TokenForNativeSwap {
+        let msg = ExecuteMsg::SwapTokenForNative {
             token_amount: Uint128(10),
             min_native: Uint128(100),
         };
