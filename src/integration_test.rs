@@ -261,8 +261,8 @@ fn swap_tokens_happy_path() {
     println!("{:?}", res.attributes);
 
     let info = get_info(&router, &amm_addr);
-    assert_eq!(info.native_supply, Uint128(100));
-    assert_eq!(info.token_supply, Uint128(100));
+    assert_eq!(info.native_reserve, Uint128(100));
+    assert_eq!(info.token_reserve, Uint128(100));
 
     let buyer = Addr::unchecked("buyer");
     let funds = coins(2000, NATIVE_TOKEN_DENOM);
@@ -285,8 +285,8 @@ fn swap_tokens_happy_path() {
     println!("{:?}", res.attributes);
 
     let info = get_info(&router, &amm_addr);
-    assert_eq!(info.native_supply, Uint128(110));
-    assert_eq!(info.token_supply, Uint128(91));
+    assert_eq!(info.native_reserve, Uint128(110));
+    assert_eq!(info.token_reserve, Uint128(91));
 
     // ensure balances updated
     let buyer_balance = cash.balance(&router, buyer.clone()).unwrap();
@@ -322,8 +322,8 @@ fn swap_tokens_happy_path() {
     println!("{:?}", res.attributes);
 
     let info = get_info(&router, &amm_addr);
-    assert_eq!(info.native_supply, Uint128(120));
-    assert_eq!(info.token_supply, Uint128(84));
+    assert_eq!(info.native_reserve, Uint128(120));
+    assert_eq!(info.token_reserve, Uint128(84));
 
     // ensure balances updated
     let buyer_balance = cash.balance(&router, buyer.clone()).unwrap();
@@ -365,8 +365,8 @@ fn swap_tokens_happy_path() {
     println!("{:?}", res.attributes);
 
     let info = get_info(&router, &amm_addr);
-    assert_eq!(info.native_supply, Uint128(101));
-    assert_eq!(info.token_supply, Uint128(100));
+    assert_eq!(info.native_reserve, Uint128(101));
+    assert_eq!(info.token_reserve, Uint128(100));
 
     // ensure balances updated
     let buyer_balance = cash.balance(&router, buyer.clone()).unwrap();
